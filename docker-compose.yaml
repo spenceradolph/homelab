@@ -1,0 +1,113 @@
+version: "3.9"
+
+services:
+  cloudflare_tunnel:
+    image: cloudflare/cloudflared
+    container_name: cloudflare_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token <token>
+    networks:
+      - private
+
+  nginx_proxy_manager:
+    image: jc21/nginx-proxy-manager
+    container_name: npm
+    restart: unless-stopped
+    ports:
+      - "22:22"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - proxymanager_data:/data
+      - proxymanager_letsencrypt:/etc/letsencrypt
+    networks:
+      - private
+
+  pihole:
+    image: pihole/pihole
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      - TZ=America/Chicago
+      - WEBPASSWORD=password
+    volumes:
+      - pihole_etc:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
+    networks:
+      - private
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - private
+
+  heimdall:
+    image: linuxserver/heimdall
+    container_name: heimdall
+    restart: unless-stopped
+    environment:
+      - TZ=America/Chicago
+    volumes:
+      - heimdall_data:/config
+    networks:
+      - private
+
+  homeassistant:
+    image: homeassistant/home-assistant
+    container_name: homeassistant
+    restart: unless-stopped
+    environment:
+      - TZ=America/Chicago
+    volumes:
+      - homeassistant_data:/config
+    networks:
+      - private
+
+  gitlab:
+    image: gitlab/gitlab-ce
+    container_name: gitlab
+    restart: unless-stopped
+    hostname: "gitlab.adolph.io"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.adolph.io'
+    volumes:
+      - gitlab_etc:/etc/gitlab
+      - gitlab_log:/var/log/gitlab
+      - gitlab_opt:/var/opt/gitlab
+    networks:
+      - private
+
+  gitlab_runner:
+    image: gitlab/gitlab-runner
+    container_name: gitlab-runner
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gitlab_runner_config:/etc/gitlab-runner
+    networks:
+      - private
+
+networks:
+  private:
+
+volumes:
+  proxymanager_data:
+  proxymanager_letsencrypt:
+  pihole_etc:
+  pihole_dnsmasq:
+  portainer_data:
+  heimdall_data:
+  homeassistant_data:
+  gitlab_etc:
+  gitlab_log:
+  gitlab_opt:
+  gitlab_runner_config:
